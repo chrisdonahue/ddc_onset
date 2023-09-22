@@ -113,7 +113,7 @@ class PlacementCNN(nn.Module):
 
         Args:
             x: Normalized Log-Mel spectrograms as float32 [num_frames, num_mel_bands (80), num_fft_frame_lengths (3)].
-            difficulties: DDR difficulty labels as int32 [batch_size]
+            difficulties: DDR difficulty labels as int64 [batch_size]
             output_logits: If True, output raw logits instead of sigmoid scores (default).
 
         Returns:

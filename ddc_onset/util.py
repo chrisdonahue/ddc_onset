@@ -30,7 +30,7 @@ def compute_onset_salience(
     if audio.dtype != np.float32:
         raise TypeError()
     if audio.ndim != 1:
-        # TODO: Support multichannel audio
+        # TODO: Support multichannel audio and/or batched audio.
         raise ValueError()
     if sr != SAMPLE_RATE:
         try:
@@ -52,12 +52,17 @@ def compute_onset_salience(
         _MODULE_SINGLETONS = tuple(model.eval() for model in _MODULE_SINGLETONS)
     if device is not None:
         _MODULE_SINGLETONS = tuple(model.to(device) for model in _MODULE_SINGLETONS)
+    extract, normalize, place = _MODULE_SINGLETONS
 
     # Predict
     with torch.no_grad():
         audio = torch.tensor(audio, device=device).view(1, -1)
-        spectrogram = SpectrogramExtractor(audio)
-        onset_salience = PlacementCNN(SpectrogramNormalizer(spectrogram))
+        difficulties = torch.tensor(
+            [difficulty.value], device=device, dtype=torch.int64
+        )
+        spectrogram = extract(audio)
+        # TODO: Batch support
+        onset_salience = place(normalize(spectrogram[0]), difficulties)[0]
         return onset_salience.cpu().numpy()
 
 
