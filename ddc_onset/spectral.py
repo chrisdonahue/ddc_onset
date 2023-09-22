@@ -1,6 +1,11 @@
+from typing import Optional
+import pathlib
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from .paths import WEIGHTS_DIR
 
 AUDIO_NUM_CHANNELS = 1
 AUDIO_FS = 44100
@@ -28,9 +33,23 @@ class SpectrogramExtractor(nn.Module):
                 requires_grad=False,
             )
             setattr(self, "mel_{}".format(i), mel)
+        self.load_state_dict(
+            torch.load(pathlib.Path(WEIGHTS_DIR, "spectrogram_extractor.bin"))
+        )
 
-    def forward(self, x, frame_chunk_size=None):
-        waveform = x
+    def forward(
+        self, x: torch.Tensor, frame_chunk_size: Optional[int] = None
+    ) -> torch.Tensor:
+        """Extracts a log mel spectrogram from a waveform.
+
+        Args:
+            x: 44.1kHz waveforms as float32 [batch_size, num_samples].
+            frame_chunk_size: Number of frames to process at a time. If None, process all frames at once.
+        Returns:
+            Log mel spectrograms as float32 [batch_size, num_frames, num_mel_bands, num_fft_frame_lengths].
+        """
+        # NOTE: This was originally implemented as [samps, batch] but [batch, samps] is better type signature.
+        waveform = x.transpose(1, 0)
         feats = []
         for i, fft_frame_length in enumerate(_FFT_FRAME_LENGTHS):
             # Pad waveform to center spectrogram
@@ -72,10 +91,11 @@ class SpectrogramExtractor(nn.Module):
 
                 # Perform FFT
                 frames = torch.transpose(frames, 1, 2)
-                spec = torch.rfft(frames, 1)
+                spec = torch.fft.rfft(frames)
 
                 # Compute power spectrogram
-                spec_r, spec_i = torch.unbind(spec, dim=3)
+                spec_r = torch.real(spec)
+                spec_i = torch.imag(spec)
                 pow_spec = torch.pow(spec_r, 2) + torch.pow(spec_i, 2)
 
                 # Compute mel spectrogram
@@ -97,5 +117,7 @@ class SpectrogramExtractor(nn.Module):
 
             feats.append(chunk_feats)
 
-        feats = torch.stack(feats, dim=2)[:, :, :, 0]
-        return feats
+        feats = torch.stack(feats, dim=2)
+
+        # [feats..., batch] -> [batch, feats...]
+        return feats.permute(3, 0, 1, 2)

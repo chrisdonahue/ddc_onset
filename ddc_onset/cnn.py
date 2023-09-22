@@ -1,10 +1,9 @@
 import numpy as np
-from scipy.signal import argrelextrema
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .constants import NUM_COARSE_DIFFICULTIES, COARSE_DIFFICULTY_TO_PLACEMENT_THRESHOLD
+from .constants import NUM_DIFFICULTIES, DIFFICULTY_TO_PLACEMENT_THRESHOLD
 
 _NUM_MEL_BANDS = 80
 _NUM_FFT_FRAME_LENGTHS = 3
@@ -144,6 +143,12 @@ class PlacementCNN(nn.Module):
 
 
 def find_peaks(scores):
+    try:
+        from scipy.signal import argrelextrema
+    except ImportError:
+        raise Exception(
+            'Scipy required for finding peaks. Please install scipy with "pip install scipy"'
+        )
     scores_smoothed = np.convolve(scores, np.hamming(5), "same")
     peaks = argrelextrema(scores_smoothed, np.greater_equal, order=1)[0]
     return peaks
