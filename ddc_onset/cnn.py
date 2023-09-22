@@ -1,16 +1,20 @@
-import numpy as np
+import pathlib
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .constants import Difficulty, DIFFICULTY_TO_PLACEMENT_THRESHOLD
+from .constants import Difficulty
+from .paths import WEIGHTS_DIR
 
 _NUM_MEL_BANDS = 80
 _NUM_FFT_FRAME_LENGTHS = 3
 
 
 class SpectrogramNormalizer(nn.Module):
-    def __init__(self):
+    """Normalizes log-Mel spectrograms to zero mean and unit variance per bin."""
+
+    def __init__(self, load_moments: bool = True):
         super().__init__()
         self.mean = nn.Parameter(
             torch.zeros(
@@ -28,8 +32,19 @@ class SpectrogramNormalizer(nn.Module):
             ),
             requires_grad=False,
         )
+        if load_moments:
+            self.load_state_dict(
+                torch.load(pathlib.Path(WEIGHTS_DIR, "spectrogram_normalizer.bin"))
+            )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        """Normalizes log-Mel spectrograms to zero mean and unit variance per bin.
+
+        Args:
+            x: 44.1kHz waveforms as float32 [batch_size, num_frames, num_mel_bands (80), num_fft_frame_lengths (3)].
+        Returns:
+            Normalized input (same shape).
+        """
         return (x - self.mean) / self.std
 
 
@@ -38,7 +53,9 @@ _FEATURE_CONTEXT_RADIUS_2 = 3
 
 
 class PlacementCNN(nn.Module):
-    def __init__(self):
+    """Predicts placement scores from log-Mel spectrograms."""
+
+    def __init__(self, load_pretrained_weights: bool = True):
         super().__init__()
         self.conv0 = nn.Conv2d(3, 10, (7, 3))
         self.maxpool0 = nn.MaxPool2d((1, 3), (1, 3))
@@ -47,8 +64,12 @@ class PlacementCNN(nn.Module):
         self.dense0 = nn.Linear(1125, 256)
         self.dense1 = nn.Linear(256, 128)
         self.output = nn.Linear(128, 1)
+        if load_pretrained_weights:
+            self.load_state_dict(
+                torch.load(pathlib.Path(WEIGHTS_DIR, "placement_cnn_ckpt_56000.bin"))
+            )
 
-    def conv(self, x):
+    def conv(self, x: torch.Tensor):
         # x is b, 3, 15, 80
 
         # Conv 0
@@ -63,7 +84,7 @@ class PlacementCNN(nn.Module):
 
         return x
 
-    def dense(self, x_conv_diff):
+    def dense(self, x_conv_diff: torch.Tensor):
         # x is b, 1125
 
         # Dense 0
@@ -81,8 +102,26 @@ class PlacementCNN(nn.Module):
         return x
 
     def forward(
-        self, x, ds, conv_chunk_size=256, dense_chunk_size=256, output_logits=False
+        self,
+        x: torch.Tensor,
+        difficulties: torch.Tensor,
+        output_logits: bool = False,
+        conv_chunk_size: int = 256,
+        dense_chunk_size: int = 256,
     ):
+        """Predicts placement scores from normalized log-Mel spectrograms.
+
+        Args:
+            x: Normalized Log-Mel spectrograms as float32 [num_frames, num_mel_bands (80), num_fft_frame_lengths (3)].
+            difficulties: DDR difficulty labels as int32 [batch_size]
+            output_logits: If True, output raw logits instead of sigmoid scores (default).
+
+        Returns:
+            Placement scores (or logits) as float32 [batch_size, num_frames].
+        """
+
+        # TODO: Proper batch support for this module
+
         # x is t, 80, 3
         num_timesteps = x.shape[0]
 
@@ -114,7 +153,7 @@ class PlacementCNN(nn.Module):
         logits = []
         for i in range(0, num_timesteps, dense_chunk_size):
             # TODO: Turn this into a convolutional layer?
-            # NOTE: Pytorch didn't like this as of 20_03_15:
+            # NOTE: Pytorch didn't like this as of 20-03-15:
             # https://github.com/pytorch/pytorch/pull/33073
             x_chunk = []
             for j in range(i, i + dense_chunk_size):
@@ -126,8 +165,8 @@ class PlacementCNN(nn.Module):
 
             # Compute dense layer for each difficulty
             logits_diffs = []
-            for k in range(ds.shape[0]):
-                d = ds[k].repeat(x_chunk.shape[0])
+            for k in range(difficulties.shape[0]):
+                d = difficulties[k].repeat(x_chunk.shape[0])
                 doh = F.one_hot(d, len(Difficulty)).float()
                 x_chunk_diff = torch.cat([x_chunk, doh], dim=1)
                 x_chunk_dense = self.dense(x_chunk_diff)
@@ -140,23 +179,3 @@ class PlacementCNN(nn.Module):
             return logits
         else:
             return torch.sigmoid(logits)
-
-
-def find_peaks(scores):
-    try:
-        from scipy.signal import argrelextrema
-    except ImportError:
-        raise Exception(
-            'Scipy required for finding peaks. Please install scipy with "pip install scipy"'
-        )
-    scores_smoothed = np.convolve(scores, np.hamming(5), "same")
-    peaks = argrelextrema(scores_smoothed, np.greater_equal, order=1)[0]
-    return peaks
-
-
-def threshold_peaks(scores, peaks, difficulty=None, threshold=None):
-    if difficulty is None and threshold is None:
-        raise ValueError("Must specify either difficulty or threshold")
-    if threshold is None:
-        threshold = COARSE_DIFFICULTY_TO_PLACEMENT_THRESHOLD[difficulty]
-    return [i for i in peaks if scores[i] >= threshold]

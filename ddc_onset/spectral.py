@@ -15,6 +15,8 @@ _LOG_EPS = 1e-16
 
 
 class SpectrogramExtractor(nn.Module):
+    """Extracts log-Mel spectrograms from waveforms."""
+
     def __init__(self):
         super().__init__()
         for i in _FFT_FRAME_LENGTHS:

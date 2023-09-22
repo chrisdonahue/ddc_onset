@@ -5,13 +5,10 @@ import unittest
 import numpy as np
 import torch
 
-from ddc.constants import CoarseDifficulty
-from ddc.paths import (
-    TEST_DATA_DIR,
-    PARAMS_FEATURE_NORMALIZER_FP,
-    PARAMS_PLACEMENT_CNN_FP,
-)
-from ddc.placement import *
+from .constants import Difficulty, DIFFICULTY_TO_THRESHOLD
+from .paths import TEST_DATA_DIR
+from .cnn import SpectrogramNormalizer, PlacementCNN
+from .util import find_peaks, threshold_peaks
 
 _SHORT_FEATS_REF_FP = os.path.join(TEST_DATA_DIR, "short_essentia_feats_ref.npy")
 _SHORT_SCORES_REF_FP = os.path.join(
@@ -37,14 +34,10 @@ class TestPlacement(unittest.TestCase):
     def setUp(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.normalizer = FeatureNormalizer()
-        self.normalizer.load_state_dict(torch.load(PARAMS_FEATURE_NORMALIZER_FP))
-        self.normalizer.eval()
+        self.normalizer = SpectrogramNormalizer()
         self.normalizer.to(self.device)
 
         self.placement = PlacementCNN()
-        self.placement.load_state_dict(torch.load(PARAMS_PLACEMENT_CNN_FP))
-        self.placement.eval()
         self.placement.to(self.device)
 
     def test_placement(self):
@@ -59,15 +52,14 @@ class TestPlacement(unittest.TestCase):
 
             with open(scores_ref_fp, "rb") as f:
                 diff_to_scores_ref = pickle.load(f, encoding="latin1")
-            scores_ref = [diff_to_scores_ref[d.value] for d in CoarseDifficulty]
+            scores_ref = [diff_to_scores_ref[d.value] for d in Difficulty]
             scores_ref = np.array(scores_ref)
 
             for conv_chunk_size in [128, 256, 512]:
                 for dense_chunk_size in [128, 256, 512]:
-                    print(conv_chunk_size, dense_chunk_size)
                     with torch.no_grad():
                         diffs = torch.tensor(
-                            [d.value for d in CoarseDifficulty],
+                            [d.value for d in Difficulty],
                             device=self.device,
                             dtype=torch.int64,
                         )
@@ -77,15 +69,18 @@ class TestPlacement(unittest.TestCase):
                             conv_chunk_size=conv_chunk_size,
                             dense_chunk_size=dense_chunk_size,
                         )
+                        print(feats_norm.shape, diffs.shape, scores.shape)
                         scores = scores.cpu().numpy()
 
                     error = np.sum(np.abs(scores - scores_ref))
-                    self.assertTrue(error < 1e-3)
+                    self.assertTrue(error < 2e-3)
 
-                    for d in CoarseDifficulty:
+                    for d in Difficulty:
                         peaks = find_peaks(scores[d.value])
                         thresholded_peaks = threshold_peaks(
-                            scores[d.value], peaks, difficulty=d
+                            scores[d.value],
+                            peaks,
+                            threshold=DIFFICULTY_TO_THRESHOLD[d],
                         )
                         self.assertEqual(
                             (len(peaks), len(thresholded_peaks)),

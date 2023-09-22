@@ -1,7 +1,8 @@
+from .paths import LIB_DIR
+from .constants import SAMPLE_RATE, FRAME_RATE, Difficulty
 from .spectral import SpectrogramExtractor
 from .cnn import SpectrogramNormalizer, PlacementCNN
-from .constants import FRAME_RATE
-from .paths import LIB_DIR
+from .util import compute_onset_salience, find_peaks, threshold_peaks
 
 
 # NOTE: This changes the test discovery pattern from "test*.py" (default) to "*test.py".

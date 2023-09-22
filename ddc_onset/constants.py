@@ -13,8 +13,8 @@ class Difficulty(Enum):
     CHALLENGE = 4
 
 
-# Thresholds tuned on DDR validation data. Likely irrelevant for any other application.
-DIFFICULTY_TO_PLACEMENT_THRESHOLD = {
+# Thresholds tuned on DDR validation data. Here for testing / posterity and likely irrelevant for other applications.
+DIFFICULTY_TO_THRESHOLD = {
     Difficulty.BEGINNER: 0.15325437,
     Difficulty.EASY: 0.23268291,
     Difficulty.MEDIUM: 0.29456162,
