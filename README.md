@@ -1,6 +1,6 @@
-# Onset detector from Dance Dance Convolution
+# Music onset detector from Dance Dance Convolution
 
-This is a simple PyTorch port of the CNN-based onset detector model from [Dance Dance Convolution](https://arxiv.org/abs/1703.06891), originally referred to in that work as the "step placement" model.
+This is a simple PyTorch port of the CNN-based music onset detector model from [Dance Dance Convolution](https://arxiv.org/abs/1703.06891), originally referred to in that work as the "step placement" model.
 
 I am resurfacing this model now as **I suspect it may be useful for imbuing music audio generative models with fine-grained rhythmic control**. Specifically, it can be used to extract time-varying onset salience functions from audio, which may be a reasonable musical analogy to the [Canny edge detector](https://arxiv.org/abs/2302.05543) used to enable pixel-wise control in [ControlNet](https://arxiv.org/abs/2302.05543). A visual example:
 
