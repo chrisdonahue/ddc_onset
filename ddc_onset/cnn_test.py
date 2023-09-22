@@ -69,7 +69,6 @@ class TestPlacement(unittest.TestCase):
                             conv_chunk_size=conv_chunk_size,
                             dense_chunk_size=dense_chunk_size,
                         )
-                        print(feats_norm.shape, diffs.shape, scores.shape)
                         scores = scores.cpu().numpy()
 
                     error = np.sum(np.abs(scores - scores_ref))
