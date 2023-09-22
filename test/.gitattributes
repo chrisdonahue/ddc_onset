@@ -1,0 +1,9 @@
+long_essentia_audio_ref.npy filter=lfs diff=lfs merge=lfs -text
+long_essentia_feats_ref.npy filter=lfs diff=lfs merge=lfs -text
+short_essentia_audio_ref.npy filter=lfs diff=lfs merge=lfs -text
+short_essentia_feats_ref.npy filter=lfs diff=lfs merge=lfs -text
+short_essentia_feats_ref_ddc_placement_scores.pkl filter=lfs diff=lfs merge=lfs -text
+long.mp3 filter=lfs diff=lfs merge=lfs -text
+long_essentia_feats_ref_ddc_placement_scores.pkl filter=lfs diff=lfs merge=lfs -text
+short.mp3 filter=lfs diff=lfs merge=lfs -text
+short.wav filter=lfs diff=lfs merge=lfs -text
