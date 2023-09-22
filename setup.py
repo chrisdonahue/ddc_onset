@@ -7,6 +7,8 @@ setup(
     url="https://github.com/chrisdonahue/ddc_onset",
     author="Chris Donahue",
     packages=["ddc_onset"],
+    package_data={"ddc_onset": ["weights/*"]},
+    include_package_data=True,
     install_requires=[
         "numpy",
         "torch>=1.9.0",
