@@ -10,9 +10,18 @@ I am resurfacing this model now as **I suspect it may be useful for imbuing musi
 
 Installation: `pip install git+https://github.com/chrisdonahue/ddc_onset`
 
-Example:
+Example (additionally requires `librosa` and `scipy`).
 
-```
+```py
+import librosa
+
+from ddc_onset import compute_onset_salience, FRAME_RATE
+
+# audio is (5864816,) in [-1, 1]
+audio, sr = librosa.load(librosa.example('fishin'), sr=44100, mono=True)
+# onset salience is (58649,) in [0, 1]
+onset_salience = predict_onset_salience(audio, sr)
+onset_times = [frame / FRAME_RATE for frame in find_peaks(onset_salience)]
 ```
 
 ## Model behavior
