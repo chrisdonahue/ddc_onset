@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .constants import NUM_DIFFICULTIES, DIFFICULTY_TO_PLACEMENT_THRESHOLD
+from .constants import Difficulty, DIFFICULTY_TO_PLACEMENT_THRESHOLD
 
 _NUM_MEL_BANDS = 80
 _NUM_FFT_FRAME_LENGTHS = 3
@@ -128,7 +128,7 @@ class PlacementCNN(nn.Module):
             logits_diffs = []
             for k in range(ds.shape[0]):
                 d = ds[k].repeat(x_chunk.shape[0])
-                doh = F.one_hot(d, NUM_COARSE_DIFFICULTIES).float()
+                doh = F.one_hot(d, len(Difficulty)).float()
                 x_chunk_diff = torch.cat([x_chunk, doh], dim=1)
                 x_chunk_dense = self.dense(x_chunk_diff)
                 logits_diffs.append(x_chunk_dense)

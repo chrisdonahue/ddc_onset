@@ -5,13 +5,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .constants import SAMPLE_RATE, FRAME_RATE
 from .paths import WEIGHTS_DIR
 
-AUDIO_NUM_CHANNELS = 1
-AUDIO_FS = 44100
-FEATS_HOP = 441
-FEATS_FS = 100
-
+_FEATS_HOP = SAMPLE_RATE // FRAME_RATE
 _FFT_FRAME_LENGTHS = [1024, 2048, 4096]
 _NUM_MEL_BANDS = 80
 _LOG_EPS = 1e-16
@@ -40,13 +37,13 @@ class SpectrogramExtractor(nn.Module):
     def forward(
         self, x: torch.Tensor, frame_chunk_size: Optional[int] = None
     ) -> torch.Tensor:
-        """Extracts a log mel spectrogram from a waveform.
+        """Extracts an 80-bin log-Mel spectrogram from a waveform with 3 different FFT frame lengths.
 
         Args:
             x: 44.1kHz waveforms as float32 [batch_size, num_samples].
             frame_chunk_size: Number of frames to process at a time. If None, process all frames at once.
         Returns:
-            Log mel spectrograms as float32 [batch_size, num_frames, num_mel_bands, num_fft_frame_lengths].
+            Log mel spectrograms as float32 [batch_size, num_frames, num_mel_bands (80), num_fft_frame_lengths (3)].
         """
         # NOTE: This was originally implemented as [samps, batch] but [batch, samps] is better type signature.
         waveform = x.transpose(1, 0)
@@ -65,14 +62,14 @@ class SpectrogramExtractor(nn.Module):
             if frame_chunk_size is None:
                 chunk_hop = waveform_padded_len
             else:
-                chunk_hop = frame_chunk_size * FEATS_HOP
+                chunk_hop = frame_chunk_size * _FEATS_HOP
 
             chunk_feats = []
             for c in range(0, waveform_padded_len, chunk_hop):
                 frames = []
-                for s in range(c, min(c + chunk_hop, waveform_padded_len), FEATS_HOP):
+                for s in range(c, min(c + chunk_hop, waveform_padded_len), _FEATS_HOP):
                     # Slice waveform into frames
-                    # TODO: Change this to range(0, waveform.shape[0], FEATS_HOP) to make num feats = ceil(num_samps / 441)? Make sure frames are equal after doing this
+                    # TODO: Change this to range(0, waveform.shape[0], _FEATS_HOP) to make num feats = ceil(num_samps / 441)? Make sure frames are equal after doing this
                     frame = waveform_padded[s : s + fft_frame_length]
                     padding_amt = fft_frame_length - frame.shape[0]
                     if padding_amt > 0:

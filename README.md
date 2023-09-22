@@ -8,6 +8,13 @@ I am resurfacing this model now as **I suspect it may be useful for imbuing musi
 
 ## Example usage
 
+Installation: `pip install git+https://github.com/chrisdonahue/ddc_onset`
+
+Example:
+
+```
+```
+
 ## Model behavior
 
 Empirically, while this model was trained for [a more specific task](#original-training), its behavior is that of an onset detector (_not_ a beat detector). In my experience, this model has solid recall both for drum and melodic onsets, though I have never attempted a formal comparison to [other onset detectors](https://madmom.readthedocs.io/en/v0.16/modules/features/onsets.html).

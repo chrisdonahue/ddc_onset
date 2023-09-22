@@ -7,4 +7,8 @@ setup(
     url="https://github.com/chrisdonahue/ddc_onset",
     author="Chris Donahue",
     packages=["ddc_onset"],
+    install_requires=[
+        "numpy",
+        "torch>=1.9.0",
+    ],
 )
